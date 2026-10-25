@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7f9">
+  <meta name="description" content="Расписание школы Дмитровский: уроки по классам, звонки и актуальные PDF-документы.">
+  <title>Расписание · Школа Дмитровский</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./jszip.min.js"></script>
+  <script src="./config.js"></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a href="#content" class="skip">Перейти к расписанию</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="#"><span class="brand-icon" aria-hidden="true">Д<span>•</span></span><span>Школа<br><strong>Дмитровский</strong></span></a>
+      <div class="school-label">ШКОЛЬНЫЙ НАВИГАТОР</div>
+      <nav aria-label="Основное меню">
+        <button class="nav-item active" data-page="schedule"><span aria-hidden="true">▦</span> Расписание</button>
+        <button class="nav-item" data-page="documents"><span aria-hidden="true">▤</span> Документы <span id="doc-count" class="counter">0</span></button>
+        <button class="nav-item" data-page="bells"><span aria-hidden="true">◷</span> Звонки</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="small-note">Всё расписание.<br>Одна ссылка.</div><button class="nav-item" data-page="admin"><span aria-hidden="true">⚙</span> Управление</button></div>
+    </aside>
+    <main id="content">
+      <header class="topbar"><div class="mobile-brand">Д<span>•</span> <strong>Дмитровский</strong></div><span class="breadcrumb">Школа Дмитровский <span>/</span> <span id="crumb">Расписание</span></span><button class="share-btn" id="share">↗ <span>Поделиться</span></button></header>
+      <div class="content">
+        <section class="page-head"><div><div class="eyebrow">ШКОЛА ДМИТРОВСКИЙ</div><h1 id="page-title">Ваш учебный день</h1><p id="page-subtitle">Выберите класс — всё нужное будет под рукой.</p></div><span id="updated" class="updated">Расписание ещё не загружено</span></section>
+        <div id="notice" class="notice" hidden role="status"></div>
+        <section id="schedule-page">
+          <div class="entity-tabs" role="group" aria-label="Чьё расписание"><button data-mode="class" class="selected" aria-pressed="true">Класс</button><button data-mode="teacher" aria-pressed="false">Учитель</button><button data-mode="room" aria-pressed="false">Кабинет</button></div>
+          <div class="controls"><div class="entity-picker"><input id="entity-search" type="search" aria-label="Поиск класса, учителя или кабинета" placeholder="Поиск класса" autocomplete="off"><div class="class-control"><label id="entity-label" for="class-select">Класс</label><select id="class-select"><option value="">Выберите класс</option></select><button id="favorite" class="favorite" aria-label="Запомнить выбор" aria-pressed="false">☆</button></div></div><div class="segmented" role="group" aria-label="Вид расписания"><button data-view="day" class="selected" aria-pressed="true">День</button><button data-view="week" aria-pressed="false">Неделя</button></div></div>
+          <div class="schedule-layout"><div class="schedule-main"><div class="week-bar"><button id="prev-week" class="icon-btn" aria-label="Предыдущая неделя">‹</button><span id="week-range"></span><button id="next-week" class="icon-btn" aria-label="Следующая неделя">›</button><button id="today" class="text-btn">Сегодня</button></div><div id="days" class="days" role="group" aria-label="Дни недели"></div><div id="lessons" aria-live="polite"></div></div><aside class="right-column"><section class="info-card blue-card"><span class="mini-label">ВСЕГДА ПОД РУКОЙ</span><div class="book-art" aria-hidden="true"><span></span><span></span><i>Д</i></div><h2>Расписание без поисков</h2><p>Сохраните класс, учителя или кабинет и добавьте ссылку на главный экран телефона.</p><button id="copy-class" class="card-link">Скопировать ссылку на расписание ↗</button></section><section class="info-card"><span class="mini-label">ДОКУМЕНТЫ</span><h2>Расписание в PDF</h2><p id="document-hint">Здесь появятся файлы, которые загрузит администратор.</p><button class="card-link" data-page="documents">Открыть документы →</button></section><div class="support-note"><span aria-hidden="true">ⓘ</span><p>Если в расписании есть изменения, уточните их у классного руководителя.</p></div></aside></div>
+        </section>
+        <section id="documents-page" hidden><div id="documents-list" class="document-list"></div></section>
+        <section id="bells-page" hidden><div class="panel"><p class="muted">Время звонков задаётся в загруженной таблице. Если в файле нет времени, оно не будет придумано автоматически.</p><div id="bell-list"></div></div></section>
+        <section id="admin-page" hidden><div id="admin-content"></div></section>
+        <footer><span>Школа Дмитровский</span><span>Удобно ученикам, родителям и учителям.</span></footer>
+      </div>
+    </main>
+  </div>
+  <div id="toast" class="toast" hidden role="status"></div>
+  <dialog id="pdf-dialog"><div class="dialog-bar"><strong id="pdf-title">Документ</strong><a id="pdf-download" download>Скачать</a><button id="pdf-close" class="icon-btn" aria-label="Закрыть документ">×</button></div><iframe id="pdf-frame" title="Просмотр расписания PDF"></iframe><p>Если встроенный просмотр недоступен, скачайте документ.</p></dialog>
+</body>
+</html>
