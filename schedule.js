@@ -18,3 +18,11 @@ export function entityLessonsFor(state,mode,entity,day){
   return [...joined.values()].sort((a,b)=>a.start.localeCompare(b.start)||a.slot-b.slot||a.classes[0].localeCompare(b.classes[0],'ru',{numeric:true}));
 }
 export function emptyState(){return {version:1,updatedAt:null,validFrom:'',validTo:'',notice:'',lessons:[],documents:[]};}
+
+// Empty slots use the bell times printed in the school's source PDF.
+export function lessonSlots(state){
+  const max=Math.max(10,...state.lessons.map(l=>l.slot));
+  return Array.from({length:max},(_,i)=>{const slot=i+1,observed=state.lessons.find(l=>l.slot===slot&&l.start&&l.end);return {slot,start:observed?.start||(slot<=10?`${String(7+slot).padStart(2,'0')}:30`:''),end:observed?.end||(slot<=10?`${String(8+slot).padStart(2,'0')}:10`:'')};});
+}
+export function dayGrid(state,mode,entity,date){const items=entityLessonsFor(state,mode,entity,date);return lessonSlots(state).map(slot=>({...slot,items:items.filter(l=>l.slot===slot.slot)}));}
+export function weekDates(state,day){const start=monday(day),max=Math.max(5,...state.lessons.map(l=>l.date?weekday(l.date):l.weekday));return Array.from({length:max},(_,i)=>addDays(start,i));}
