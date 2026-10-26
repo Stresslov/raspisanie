@@ -1,1 +1,1 @@
-globalThis.SCHOOL_API_BASE = 'https://dmitrovsky-school-schedule.annu666ka.chatgpt.site/api/';
+globalThis.SCHOOL_GITHUB = {owner:'Stresslov',repo:'raspisanie',branch:'main',dataPath:'data/school.json'};

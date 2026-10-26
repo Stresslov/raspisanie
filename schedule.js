@@ -2,19 +2,29 @@ export function isoDay(date=new Date()){const p=new Intl.DateTimeFormat('en-CA',
 export function addDays(day,n){const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
 export function weekday(day){return (new Date(day+'T12:00:00Z').getUTCDay()+6)%7+1;}
 export function monday(day){return addDays(day,1-weekday(day));}
-export function lessonsFor(state,cl,day){
+export function baseLessonsFor(state,cl,day){
   if((state.validFrom&&day<state.validFrom)||(state.validTo&&day>state.validTo))return [];
   const all=(state.lessons||[]).filter(l=>l.class===cl);
   const special=all.filter(l=>l.date===day),wholeSlots=new Set(special.filter(l=>!l.subgroup).map(l=>l.slot)),groupSlots=new Set(special.map(l=>[l.slot,l.subgroup||''].join('|')));
   return [...all.filter(l=>!l.date&&l.weekday===weekday(day)&&!wholeSlots.has(l.slot)&&!groupSlots.has([l.slot,l.subgroup||''].join('|'))),...special].sort((a,b)=>a.slot-b.slot||(a.subgroup||'').localeCompare(b.subgroup||'','ru'));
 }
+export function lessonsFor(state,cl,day){return baseLessonsFor(state,cl,day).map(l=>{const task=state.changes?.tasks?.find(t=>!t.cancelledAt&&t.date===day&&t.lesson.class===cl&&['slot','subgroup','teacher','subject','start','end','room','campus'].every(k=>(t.lesson[k]||'')===(l[k]||'')));if(!task)return l;return {...l,...(task.replacement||{}),originalTeacher:l.teacher,originalSubject:l.subject,replacementStatus:task.replacement?'assigned':'pending',replacementId:task.id};});}
 export function classNames(state){return [...new Set(state.lessons.map(l=>l.class))].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));}
-export function entityOptions(state,mode='class'){const key=mode==='teacher'?'teacher':mode==='room'?'room':'class';return [...new Set(state.lessons.map(l=>l[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));}
+export function entityOptions(state,mode='class'){const key=mode==='teacher'?'teacher':mode==='room'?'room':'class',values=state.lessons.map(l=>l[key]).filter(Boolean);if(mode==='teacher'){values.push(...(state.changes?.staff||[]).map(p=>p.teacher),...(state.changes?.tasks||[]).filter(t=>!t.cancelledAt&&t.replacement).map(t=>t.replacement.teacher));}if(mode!=='teacher')return [...new Set(values)].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));const unique=new Map();for(const value of values){const normalized=value.toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim();if(!unique.has(normalized))unique.set(normalized,value);}return [...unique.values()].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));}
 export function entityLessonsFor(state,mode,entity,day){
   if(mode==='class')return lessonsFor(state,entity,day).map(l=>({...l,classes:[l.class],subgroups:l.subgroup?[l.subgroup]:[]}));
-  const matches=[];for(const cl of classNames(state))matches.push(...lessonsFor(state,cl,day).filter(l=>l[mode]===entity));
+  const matches=[];
+  for(const cl of classNames(state)){
+    const effective=lessonsFor(state,cl,day);
+    matches.push(...effective.filter(l=>l[mode]===entity));
+    if(mode==='teacher')for(const l of effective){
+      if(l.replacementStatus!=='assigned'||l.originalTeacher!==entity||l.teacher===entity)continue;
+      const original=baseLessonsFor(state,cl,day).find(x=>x.slot===l.slot&&(x.subgroup||'')===(l.subgroup||'')&&x.teacher===entity);
+      if(original)matches.push({...original,originalTeacher:entity,originalSubject:original.subject,replacementStatus:'replaced',replacementId:l.replacementId,replacementTeacher:l.teacher,replacementSubject:l.subject,replacementRoom:l.room,replacementCampus:l.campus});
+    }
+  }
   const joined=new Map();
-  for(const l of matches){const key=JSON.stringify([l.start,l.end,l.slot,l.subject,l.teacher,l.room,l.campus,l.date]);if(!joined.has(key))joined.set(key,{...l,classes:[],subgroups:[]});const item=joined.get(key);if(!item.classes.includes(l.class))item.classes.push(l.class);if(l.subgroup&&!item.subgroups.includes(l.subgroup))item.subgroups.push(l.subgroup);}
+  for(const l of matches){const key=JSON.stringify([l.start,l.end,l.slot,l.subject,l.teacher,l.room,l.campus,l.date,l.replacementStatus,l.originalTeacher,l.replacementTeacher,l.replacementSubject,l.replacementRoom]);if(!joined.has(key))joined.set(key,{...l,classes:[],subgroups:[]});const item=joined.get(key);if(!item.classes.includes(l.class))item.classes.push(l.class);if(l.subgroup&&!item.subgroups.includes(l.subgroup))item.subgroups.push(l.subgroup);}
   return [...joined.values()].sort((a,b)=>a.start.localeCompare(b.start)||a.slot-b.slot||a.classes[0].localeCompare(b.classes[0],'ru',{numeric:true}));
 }
 export function emptyState(){return {version:1,updatedAt:null,validFrom:'',validTo:'',notice:'',lessons:[],documents:[]};}
