@@ -15,3 +15,7 @@ main{min-width:0}.content{max-width:var(--content-width);margin:auto;padding:var
 .install-body{padding:var(--s4) var(--s6);font-size:var(--font-base);line-height:1.8;overflow-wrap:anywhere}
 .install-body ol{padding-left:var(--s6)}.install-body li{margin:var(--s3) 0}.install-body>p:last-child{min-height:24px}
 @media(max-width:640px){.install-app{display:flex}.main-nav:has(.install-app:not([hidden])){grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s1);padding-left:var(--s2);padding-right:var(--s2)}.main-nav:has(.install-app:not([hidden])) .nav-item{padding-left:var(--s1);padding-right:var(--s1)}.install-body{padding:var(--s3) var(--s4)}}
+.pdf-review-filters,.pdf-bulk{display:flex;align-items:end;flex-wrap:wrap;gap:var(--s3)}
+.pdf-bulk>.field{flex:1;min-width:160px}.pdf-review-filters>.field{min-width:160px}.pdf-review-check{display:flex;gap:var(--s2);align-items:center;min-height:var(--tap);margin:var(--s3) 0;font-size:var(--font-sm);line-height:1.7}
+.pdf-review-table{max-height:650px}.pdf-review-table input:not([type=checkbox]){width:150px;min-height:var(--tap);border:1px solid var(--line);border-radius:var(--s2);padding:var(--s2);background:var(--surface);font-size:var(--font-sm)}
+.pdf-review-table td:first-child{min-width:140px;white-space:normal}.pdf-review-table details p{max-width:280px;overflow-wrap:anywhere}.pdf-review-table tr.review-needed{background:var(--warning-bg)}.pdf-review-table td{vertical-align:top}.pdf-review-table input[type=number]{width:65px!important}

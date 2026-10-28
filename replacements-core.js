@@ -15,24 +15,29 @@ export function taskIsCurrent(state,task){return baseLessonsFor(state,task.lesso
 export function overlaps(a,b){return a.start&&a.end&&b.start&&b.end?a.start<b.end&&b.start<a.end:a.slot===b.slot;}
 export function dailyLessons(state,changes,date){const source={...state,changes};return classNames(state).flatMap(cl=>lessonsFor(source,cl,date));}
 export function teacherLessons(state,changes,teacher,date){return dailyLessons(state,changes,date).filter(l=>l.teacher===teacher&&l.replacementStatus!=='pending').sort((a,b)=>a.slot-b.slot||a.class.localeCompare(b.class,'ru',{numeric:true}));}
-export function unavailable(changes,teacher,date,lesson){return changes.absences.some(a=>!a.cancelledAt&&a.teacher===teacher&&a.date===date&&(a.allDay||a.slots.includes(lesson.slot)));}
-const priorities=['','Тот же предмет · предыдущий урок в этом корпусе','Тот же предмет · предыдущий урок в другом корпусе','Другой предмет · предыдущий урок в этом корпусе','Другой предмет · предыдущий урок в другом корпусе','Тот же предмет · предыдущий корпус не определён','Другой предмет · предыдущий корпус не определён'];
+export function unavailable(changes,teacher,date,lesson){return changes.absences.some(a=>!a.cancelledAt&&normalize(a.teacher)===normalize(teacher)&&a.date===date&&(a.allDay||a.slots.includes(lesson.slot)));}
+export function homeroomTeachers(state,className){
+  const lessons=state.lessons.filter(l=>l.class===className&&/(?:^|\s)разговоры\s+о\s+важном(?:\s|$)/u.test(normalize(l.subject).replace(/[«»„“”"'().,_-]/g,' '))&&l.teacher&&!/ваканси/i.test(l.teacher));
+  const regular=lessons.filter(l=>!l.date),source=regular.length?regular:lessons;
+  return [...new Set(source.map(l=>l.teacher))];
+}
+const priorities=['','Учитель другой подгруппы этого класса','Классный руководитель','Тот же предмет · предыдущий урок в этом корпусе','Тот же предмет · предыдущий урок в другом корпусе','Другой предмет · предыдущий урок в этом корпусе','Другой предмет · предыдущий урок в другом корпусе','Тот же предмет · предыдущий корпус не определён','Другой предмет · предыдущий корпус не определён'];
 export function replacementCandidates(state,changes,task){
   if(task.cancelledAt||!taskIsCurrent(state,task))return [];
-  const l=task.lesson,all=dailyLessons(state,changes,task.date).filter(x=>x.replacementId!==task.id&&x.replacementStatus!=='pending'),profiles=teacherProfiles(state,changes);
+  const l=task.lesson,all=dailyLessons(state,changes,task.date).filter(x=>x.replacementId!==task.id&&x.replacementStatus!=='pending'),profiles=teacherProfiles(state,changes),homeroomNames=new Set(homeroomTeachers(state,l.class).map(normalize));
   const candidates=[];
   for(const [teacher,profile] of profiles){
     const subjectsSet=profile.subjects;
-    if(teacher===l.teacher||unavailable(changes,teacher,task.date,l))continue;
-    const teacherDay=all.filter(x=>x.teacher===teacher),busy=teacherDay.filter(x=>overlaps(x,l));
+    if(normalize(teacher)===normalize(l.teacher)||unavailable(changes,teacher,task.date,l))continue;
+    const teacherDay=all.filter(x=>normalize(x.teacher)===normalize(teacher)),busy=teacherDay.filter(x=>overlaps(x,l));
     const joinsGroup=!!l.subgroup&&busy.length>0&&busy.every(x=>x.class===l.class&&x.slot===l.slot&&x.subgroup&&x.subgroup!==l.subgroup);
     if(busy.length&&!joinsGroup)continue;
     const previous=teacherDay.filter(x=>x.start&&x.end&&l.start?x.end<=l.start:x.slot<l.slot).sort((a,b)=>(b.end||'').localeCompare(a.end||'')||b.slot-a.slot);
     const previousCampuses=[...new Set(previous.filter(x=>x.slot===previous[0]?.slot).map(campusOf).filter(Boolean))];
     const previousCampus=previousCampuses.length===1?previousCampuses[0]:'',targetCampus=campusOf(l),sameSubject=[...subjectsSet].some(s=>normalize(s)===normalize(l.subject));
-    const known=!!previousCampus&&!!targetCampus,priority=known?(sameSubject?(previousCampus===targetCampus?1:2):(previousCampus===targetCampus?3:4)):(sameSubject?5:6);
+    const known=!!previousCampus&&!!targetCampus,homeroom=homeroomNames.has(normalize(teacher)),priority=joinsGroup?1:homeroom?2:known?(sameSubject?(previousCampus===targetCampus?3:4):(previousCampus===targetCampus?5:6)):(sameSubject?7:8);
     const shared=joinsGroup?busy[0]:null;
-    candidates.push({teacher,subjects:[...subjectsSet].sort((a,b)=>a.localeCompare(b,'ru')),sameSubject,priority,reason:priorities[priority],joinsGroup,additional:!profile.scheduled,previous:previous[0]?{slot:previous[0].slot,room:previous[0].room,campus:previousCampus}:null,room:shared?.room||l.room,campus:shared?.campus||l.campus,sharedSubject:shared?.subject||'',sharedGroups:joinsGroup?[...new Set(busy.map(x=>x.subgroup))]:[]});
+    candidates.push({teacher,subjects:[...subjectsSet].sort((a,b)=>a.localeCompare(b,'ru')),sameSubject,priority,reason:priorities[priority],joinsGroup,homeroom,additional:!profile.scheduled,previous:previous[0]?{slot:previous[0].slot,room:previous[0].room,campus:previousCampus}:null,room:shared?.room||l.room,campus:shared?.campus||l.campus,sharedSubject:shared?.subject||'',sharedGroups:joinsGroup?[...new Set(busy.map(x=>x.subgroup))]:[]});
   }
   return candidates.sort((a,b)=>a.priority-b.priority||Number(b.joinsGroup)-Number(a.joinsGroup)||a.teacher.localeCompare(b.teacher,'ru'));
 }
@@ -41,7 +46,7 @@ export function registerAbsence(state,changes,input,{id=()=>crypto.randomUUID(),
   const {teacher,date}=input,allDay=input.allDay===true,slots=allDay?[]:[...new Set(input.slots||[])].sort((a,b)=>a-b);
   requireValue(teacherNames(state,changes).includes(teacher),'Выберите учителя из расписания или списка сотрудников.');
   requireValue(allDay||slots.length&&slots.every(s=>Number.isInteger(s)&&s>=1&&s<=20),'Выберите хотя бы один урок.');
-  const wanted=l=>allDay||slots.includes(l.slot),existing=changes.absences.find(a=>!a.cancelledAt&&a.teacher===teacher&&a.date===date);
+  const wanted=l=>allDay||slots.includes(l.slot),existing=changes.absences.find(a=>!a.cancelledAt&&normalize(a.teacher)===normalize(teacher)&&a.date===date);
   const affected=teacherLessons(state,changes,teacher,date).filter(wanted);
   requireValue(affected.length||(changes.staff||[]).some(p=>p.teacher===teacher),'На выбранные уроки нет занятий учителя либо отсутствие уже отмечено.');
   const next=structuredClone(changes),timestamp=now();

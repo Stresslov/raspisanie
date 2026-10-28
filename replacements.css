@@ -9,3 +9,12 @@
 .staff-record .actions{margin:0;justify-content:flex-end}.staff-record button{font-size:var(--font-xs)}
 #staff-list{margin-top:var(--s6)}.candidate-card .additional-staff{color:var(--brand);font-size:var(--font-caption);font-weight:var(--weight-semi)}
 @media(max-width:640px){.staff-fields{grid-template-columns:1fr;gap:0}.staff-record{align-items:flex-start;flex-direction:column;gap:var(--s2)}.staff-record .actions{justify-content:flex-start}.staff-panel>summary{font-size:var(--font-sm)}}
+/* Assigned substitutions have a distinct surface; the room chip retains its campus tint. */
+.slot-lesson.is-substitution{--lesson-bg:var(--replacement-bg);--lesson-accent:var(--replacement-accent);--lesson-border:var(--replacement-border)}
+.is-substitution .replacement-mark.assigned{color:var(--replacement-badge-text);background:var(--replacement-badge-bg);border-color:var(--replacement-border);font-weight:var(--weight-semi)}
+.is-substitution.campus-1 .slot-room{background:var(--campus-1-bg);border-color:var(--campus-1-border)}
+.is-substitution.campus-2 .slot-room{background:var(--campus-2-bg);border-color:var(--campus-2-border)}
+.is-substitution.campus-3 .slot-room{background:var(--campus-3-bg);border-color:var(--campus-3-border)}
+.is-substitution.campus-4 .slot-room{background:var(--campus-4-bg);border-color:var(--campus-4-border)}
+.is-substitution.electronic .slot-room{background:var(--electronic-bg);border-color:var(--electronic-border)}
+.candidate-card .candidate-role{color:var(--brand);font-weight:var(--weight-semi);font-size:var(--font-xs)}

@@ -27,6 +27,8 @@
   --campus-4-bg: #FFF1E2; --campus-4-accent: #985A1C; --campus-4-border: #E5C19C;
   --electronic-bg: #FCEAF3; --electronic-accent: #A43D73; --electronic-border: #E5B2CA;
   --lesson-muted: #4C6077;
+  --replacement-bg: #FFF5B8; --replacement-accent: #8A6300; --replacement-border: #D4AE38;
+  --replacement-badge-bg: #FFF8D6; --replacement-badge-text: #6D5100;
   --success: #167A55; --success-bg: #ECF7F1; --success-line: #C2E4D2;
   --warning: #B76B13; --warning-ink: #8D500D; --warning-bg: #FFF6E9; --warning-line: #F0D4AC;
   --danger: #BC3D3D; --danger-bg: #FDF0EF; --danger-line: #EEC9C7;

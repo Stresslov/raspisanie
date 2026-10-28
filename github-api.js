@@ -1,6 +1,8 @@
 // The existing API and replacement rules run against a GitHub-backed store.
 // This module never contacts the previous hosting service.
 import {handleApi} from './school-api.js';
+import {parseBrowserPdf} from './browser-pdf.js';
+import {prepareMeshExport} from './mesh-export.js';
 
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
@@ -37,7 +39,7 @@ class RepositoryBucket{
   }
 }
 
-export function createGitHubApi({config,baseUrl,fetcher=(...args)=>fetch(...args)}){
+export function createGitHubApi({config,baseUrl,fetcher=(...args)=>fetch(...args),importPdf=parseBrowserPdf}){
   const {owner,repo,branch='main',dataPath='data/school.json'}=config;
   if(!/^[\w-]+$/.test(owner)||!/^[\w.-]+$/.test(repo)||!branch||dataPath!=='data/school.json')throw new Error('Неверные настройки репозитория GitHub.');
   const root=new URL(baseUrl),repository=`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,pending=new Map();
@@ -103,7 +105,7 @@ export function createGitHubApi({config,baseUrl,fetcher=(...args)=>fetch(...args
     try{
       const url=new URL(request.url),prefix=new URL('api/',root).pathname;
       if(url.origin!==root.origin||!url.pathname.startsWith(prefix))throw fail('Неизвестный адрес данных.',404);
-      const path=url.pathname.slice(prefix.length),token=request.headers.get('x-school-admin-key')||'',write=['PUT','POST'].includes(request.method),protectedRoute=write||['admin','changes/admin','changes/candidates'].includes(path);
+      const path=url.pathname.slice(prefix.length),token=request.headers.get('x-school-admin-key')||'',write=['PUT','POST'].includes(request.method),protectedRoute=write||['admin','changes/admin','changes/candidates'].includes(path)||path.startsWith('mesh/');
       if(protectedRoute)await verifyToken(token);
       const {snapshot,sha}=token?await readRepository(token):{snapshot:await readPublic(),sha:null};
       const bucket=new RepositoryBucket(snapshot,pending,async key=>{
@@ -111,6 +113,23 @@ export function createGitHubApi({config,baseUrl,fetcher=(...args)=>fetch(...args
         if(!response.ok)throw fail('Документ пока не опубликован GitHub Pages. Повторите попытку позже.',404);
         return new Uint8Array(await response.arrayBuffer());
       });
+      if(path==='pdf-import'&&request.method==='POST'){
+        const form=await request.formData(),file=form.get('file'),settings={classOverride:String(form.get('classOverride')||'').trim(),campus:String(form.get('campus')||'').trim()};
+        let result;try{result=await importPdf(file,settings,{onProgress:(page,pages)=>{if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('school-pdf-progress',{detail:{page,pages}}));}});}catch(error){throw fail(error.message||'Не удалось распознать PDF. Проверьте файл.');}
+        const id=crypto.randomUUID(),document={id,name:String(file.name||'Расписание.pdf').slice(0,180),class:settings.classOverride,size:file.size};
+        await bucket.put('pdf/'+id,file.stream(),{customMetadata:{name:document.name,createdAt:new Date().toISOString()}});return json({...result,document});
+      }
+      if(path.startsWith('mesh/')){
+        if(path==='mesh/send')throw fail('Прямая передача в МЭШ ещё не подключена. Нужны официальный способ интеграции и доступ школы. Данные не отправлены.',501);
+        if(request.method!=='GET')throw fail('Метод не поддерживается.',405);
+        if(path==='mesh/status')return json({configured:false,message:'Доступны подготовка и выгрузка. Для прямой отправки нужны официальная документация интеграции МЭШ и доступ школы.'});
+        if(!['mesh/preview','mesh/export'].includes(path))throw fail('Неизвестный адрес данных.',404);
+        const schedule=url.searchParams.get('schedule')||'current',changes=await handleApi(new Request('https://school.internal/api/changes?schedule='+encodeURIComponent(schedule),{headers:request.headers}),{BUCKET:bucket,ADMIN_TOKEN:token});
+        if(!changes.ok)return changes;
+        const bundle=prepareMeshExport(await changes.json(),schedule,url.searchParams.get('from')||'',url.searchParams.get('to')||'');
+        if(path==='mesh/export'&&!bundle.canExport)throw fail('Сначала назначьте все замены и устраните изменённые исходные уроки.',409);
+        return json(bundle);
+      }
       const response=await handleApi(new Request('https://school.internal/api/'+path+url.search,{method:request.method,headers:request.headers,body:write?await request.arrayBuffer():undefined}),{BUCKET:bucket,ADMIN_TOKEN:token||undefined});
       if(response.ok&&write&&bucket.changed)await commit(bucket,sha,token,path);
       return response;
